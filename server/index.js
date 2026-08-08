@@ -12,7 +12,7 @@ connectDB();
 
 const app = express();
 
-// Enable full CORS for dev environment
+// Enable full CORS for dev and prod environments
 app.use(cors());
 app.use(express.json());
 
@@ -21,11 +21,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadRoutes);
 
 app.get('/', (req, res) => {
-  res.send('AI Sales Assistant API is running on Port 5001...');
+  res.send('AI Sales Assistant API is running...');
 });
 
-const PORT = 5001;
+// Bind to Render's environment PORT variable, fallback to 5001 for local dev
+const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
