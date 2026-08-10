@@ -1,12 +1,24 @@
 # 🚀 Autonomous Sales Assistant
 
-> An end-to-end, AI-native B2B lead management and sales orchestration platform built to transform unstructured prospect data into qualified pipeline strategy, structured scoring, and actionable outreach.
+An end-to-end, AI-native B2B lead management and sales orchestration platform built to transform unstructured prospect data into qualified pipeline strategy, structured scoring, and actionable outreach.
+
+![Build Status](https://github.com/harshvardhanongithub/autonomous-sales-assistant/actions/workflows/ci.yml/badge.svg)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+![React](https://img.shields.io/badge/Frontend-React_19_|_Tailwind_CSS-blue)
+![Express](https://img.shields.io/badge/Backend-Express.js_|_MongoDB-green)
 
 ---
 
 ## 📌 Executive Summary
 
-The **Autonomous Sales Assistant** bridges modern LLM reasoning with automated enterprise workflows. Instead of relying on manual CRM data entry, the system ingests raw lead inputs, runs multi-pass qualification models via an automated orchestration engine, persists verified data across a modern full-stack web application, and surfaces real-time sales intelligence through an intuitive dashboard.
+The Autonomous Sales Assistant bridges modern LLM reasoning with automated enterprise workflows. Instead of relying on manual CRM data entry, the system ingests raw lead inputs, runs multi-pass qualification models via an automated orchestration engine, persists verified data across a modern full-stack web application, and surfaces real-time sales intelligence through an intuitive dashboard.
+
+---
+
+## 🌐 Live Production Links
+
+* **Live Web Application:** [autonomous-sales-assistant-1k5k.vercel.app](https://autonomous-sales-assistant-1k5k.vercel.app)
+* **Backend API Gateway:** `https://autonomous-sales-assistant.onrender.com`
 
 ---
 
@@ -15,8 +27,9 @@ The **Autonomous Sales Assistant** bridges modern LLM reasoning with automated e
 The platform is engineered using a decoupled, multi-tier architecture to ensure operational reliability, minimal latency, and strict schema validation across all stages.
 
 * **Automation & AI Orchestration:** n8n Workflow Automation, Custom Webhook Listeners, LLM API Interfaces
+* **Backend REST API:** Node.js, Express.js (ES Modules), JWT Authentication, Helmet HTTP Security, Rate Limiting Middleware
+* **Automated Testing & CI/CD:** Jest, Supertest integration test suite, Automated GitHub Actions Workflow (`.github/workflows/ci.yml`)
 * **Frontend Application:** React 19, Vite, Tailwind CSS, Lucide Icons, React Router DOM
-* **Backend REST API:** Node.js, Express.js, JWT Authentication, CORS Middleware
 * **Database & Persistence:** MongoDB Atlas (Mongoose ODM)
 * **Production Deployment:** Vercel (Frontend Single Page Application), Render (Backend Express Web Service)
 
@@ -61,6 +74,19 @@ The platform is engineered using a decoupled, multi-tier architecture to ensure 
 * **Server (Render):** Hosted as an active Express web service listening on dynamic environment ports (`process.env.PORT`) with encrypted environment variables (`MONGO_URI`, `JWT_SECRET`).
 
 ---
+## 🧪 Testing & CI/CD Pipeline
+
+The backend API includes integration test coverage using Jest and Supertest to validate health checks, authentication boundaries, input validation, and route security.
+
+To run the test suite locally:
+
+bash
+cd server
+npm test
+
+Continuous Integration is enforced via GitHub Actions (.github/workflows/ci.yml) on every push and pull request to main.
+
+---
 
 ## ⚡ Local Development & Setup
 
@@ -76,7 +102,7 @@ The platform is engineered using a decoupled, multi-tier architecture to ensure 
    git clone https://github.com/harshvardhanongithub/autonomous-sales-assistant.git
    https://github.com/harshvardhanongithub/autonomous-sales-assistant.git
    cd autonomous-sales-assistant
-   ```
+   
 
 2. **Configure Environment Variables:**
    Create a `.env` file in the root folder:
@@ -107,3 +133,8 @@ The platform is engineered using a decoupled, multi-tier architecture to ensure 
 
 * **Live Web Application:** [https://autonomous-sales-assistant-1k5k.vercel.app](https://autonomous-sales-assistant-1k5k.vercel.app)
 * **Backend API Gateway:** [https://autonomous-sales-assistant.onrender.com](https://autonomous-sales-assistant.onrender.com)
+
+* ---
+
+* 📄 License
+This project is licensed under the MIT License.
