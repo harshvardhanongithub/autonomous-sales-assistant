@@ -80,9 +80,10 @@ The backend API includes integration test coverage using Jest and Supertest to v
 
 To run the test suite locally:
 
-'''bash
+```bash
 cd server
-npm test'''
+npm test
+```
 
 Continuous Integration is enforced via GitHub Actions (.github/workflows/ci.yml) on every push and pull request to main.
 
