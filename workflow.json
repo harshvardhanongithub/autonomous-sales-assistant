@@ -1,0 +1,404 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-lead",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        -48
+      ],
+      "id": "15295ab3-1c0d-4596-aaf1-ff7b3dc57d32",
+      "name": "Webhook1",
+      "webhookId": "1d02e517-c6f4-4d9c-a682-c08439e9e184"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert AI Sales Assistant. Your job is to analyze incoming leads and return a structured analysis.\n\nHere is the incoming lead information:\nName: {{ $json.body.name }}\nEmail: {{ $json.body.email }}\nCompany: {{ $json.body.company }}\nMessage: {{ $json.body.message }}\n\nAnalyze the lead and provide your response exactly in this format:\n\nLEAD SCORE: [Rate from 0 to 100 based on buyer intent, clear project requirements, and budget size]\nSUMMARY: [A brief 1-sentence overview of what they want]\nDRAFT EMAIL: [Write a highly personalized, warm, and professional outreach response addressing their specific message. Signed from the Sales Team.]",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        608,
+        -48
+      ],
+      "id": "b5249c33-7e71-46c0-aaa9-6b60cfa13284",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        32,
+        160
+      ],
+      "id": "6d0e6819-4058-4e15-8d19-2ef344af95a2",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "rKWmQaH5PAJ1ZNmS",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Har ek incoming item ke liye text me se score nikalenge\nfor (const item of $input.all()) {\n  const textOutput = item.json.text || \"\";\n  const scoreMatch = textOutput.match(/LEAD SCORE:\\s*(\\d+)/);\n  item.json.extracted_score = scoreMatch ? parseInt(scoreMatch[1], 10) : 0;\n}\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -48
+      ],
+      "id": "47482f15-0d5a-4739-b6bf-272aa438b5b7",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4ec0b519-4186-4bf0-b5c2-0b82a4c4c90b",
+              "leftValue": "={{ $('Code in JavaScript').item.json.extracted_score }}",
+              "rightValue": 75,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1328,
+        -48
+      ],
+      "id": "54ebcf4a-d2e3-4129-80ef-d3f6fa566b3e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1fu0K3vudV_VbOG_wgnofsFYvqO_gFMdg7rwyMOi-2RM",
+          "mode": "list",
+          "cachedResultName": "AI Lead Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fu0K3vudV_VbOG_wgnofsFYvqO_gFMdg7rwyMOi-2RM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fu0K3vudV_VbOG_wgnofsFYvqO_gFMdg7rwyMOi-2RM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $('Webhook1').item.json.body.name }}",
+            "Company": "={{ $('Webhook1').item.json.body.company }}",
+            "Lead Score": "={{ $json.extracted_score }}",
+            "Summary": "={{ $json.text.split('DRAFT EMAIL:')[0].replace('LEAD SCORE: 88', '').replace('SUMMARY:', '').trim() }}",
+            "Email": "={{ $('Webhook1').item.json.body.email }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1472,
+        -144
+      ],
+      "id": "9fc167c8-60ad-4983-8ed1-1bdfc79cd9b6",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Ol9u5Gmym8eZbYIb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=🔥 **New Hot Lead Alert!** 🔥\n\n👤 **Name:** {{ $('Webhook1').item.json.body.name }}\n🏢 **Company:** {{ $('Webhook1').item.json.body.company }}\n📊 **Lead Score:** {{ $json.lead_score }}/100\n\n📝 **Summary:** {{ ($json.text || '').split('DRAFT EMAIL:')[0].replace(/LEAD SCORE:\\s*\\d+/i, '').replace(/SUMMARY:/i, '').trim() }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        -144
+      ],
+      "id": "c5e9959c-19ac-4f70-b58a-72010d7a37ff",
+      "name": "Discord",
+      "webhookId": "a2e9bbf5-ac5b-43b2-b6b8-6ee63ad0b431",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "Tw1IA3nWJcWP9AP2",
+          "name": "Discord Webhook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enforce strict input validation before sending payloads to the LLM\nfor (const item of $input.all()) {\n  const body = item.json.body || {};\n  \n  const name = (body.name || \"\").trim();\n  const email = (body.email || \"\").trim();\n  const message = (body.message || \"\").trim();\n  \n  // Basic Email Regex Validation\n  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n  const isValidEmail = emailRegex.test(email);\n\n  // Check for required elements\n  if (!name || !isValidEmail || !message) {\n    item.json.validation_failed = true;\n    item.json.validation_error = \"Missing required fields or invalid email format.\";\n  } else {\n    item.json.validation_failed = false;\n    // Sanitize data to strip out any unwanted HTML tags or injection attempts\n    item.json.body.name = name.replace(/<\\/?[^>]+(>|$)/g, \"\");\n    item.json.body.message = message.replace(/<\\/?[^>]+(>|$)/g, \"\");\n  }\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -48
+      ],
+      "id": "2f8bad81-cc36-44d9-b834-0dba862702e1",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d1901be0-976e-43bc-a03b-79c4b19123bf",
+              "leftValue": "={{ $json.validation_failed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        400,
+        -48
+      ],
+      "id": "9b68c34f-203d-4e38-9ba6-703dd30bdaa6",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "leads",
+        "fields": "={   \"name\": \"={{ $node['Webhook1'].json.body?.name \n\n 'Anonymous' }}\",   \"email\": \"={{ $node['Webhook1'].json.body?.email \n\n '' }}\",   \"company\": \"={{ $node['Webhook1'].json.body?.company \n\n 'N/A' }}\",   \"message\": \"={{ $node['Webhook1'].json.body?.message \n\n '' }}\",   \"lead_score\": \"={{ $json.extracted_score \n\n 0 }}\",   \"timestamp\": \"={{ new Date().toISOString() }}\" }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        1168,
+        -48
+      ],
+      "id": "aec82545-2b45-4108-a1a8-da132607dd8e",
+      "name": "Insert documents",
+      "credentials": {
+        "mongoDb": {
+          "id": "3FCQjurMjUeT1V5s",
+          "name": "MongoDB account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Insert documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert documents": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "1dfa96c7-6a9b-4229-a577-4ea193de01d2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1bf3f43c08135eb85a5782f55ac9b8017ffa17a87fda5dd705a300a8cb1862fc"
+  },
+  "id": "zJElCexWZJS8bxei",
+  "tags": []
+}
