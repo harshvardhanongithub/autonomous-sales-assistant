@@ -15,9 +15,11 @@ const Login = () => {
     setErrorDetails('');
     setLoading(true);
 
+    // Resolves to Vercel env var or defaults to your live Render backend URL
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://autonomous-sales-assistant.onrender.com';
+
     try {
-      // Direct call to running backend on Port 5001
-      const response = await fetch('http://localhost:5001/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
