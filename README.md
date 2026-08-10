@@ -136,6 +136,5 @@ Continuous Integration is enforced via GitHub Actions (.github/workflows/ci.yml)
 
 * ---
 
- ##📄 License
-
-This project is licensed under the MIT License.
+ ## 📄 **License**
+This project is licensed under the [MIT License](LICENSE).
