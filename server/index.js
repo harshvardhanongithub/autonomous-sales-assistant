@@ -1,6 +1,8 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import connectDB from './config/db.js';
 
 import authRoutes from './routes/authRoutes.js';
@@ -12,9 +14,24 @@ connectDB();
 
 const app = express();
 
-// Enable full CORS for dev and prod environments
+// 1. Security Headers Middleware
+app.use(helmet());
+
+// 2. Rate Limiting Middleware (100 requests per 15 mins per IP)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes.' }
+});
+
+// Enable CORS and JSON parsing
 app.use(cors());
 app.use(express.json());
+
+// Apply rate limiting to API routes
+app.use('/api', limiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
