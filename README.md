@@ -15,6 +15,24 @@ The Autonomous Sales Assistant bridges modern LLM reasoning with automated enter
 
 ---
 
+## 📸 Application Preview
+
+<p align="center">
+  <b>User Authentication Boundary</b><br><br>
+  <img src="./assets/login.png" alt="Login Interface" width="48%"/>
+  &nbsp;
+  <img src="./assets/register.png" alt="Register Interface" width="48%"/>
+</p>
+
+<br>
+
+<p align="center">
+  <b>Real-Time Sales Intelligence & Lead Management Dashboard</b><br><br>
+  <img src="./assets/dashboard.png" alt="Autonomous Sales Assistant Dashboard" width="98%"/>
+</p>
+
+---
+
 ## 🌐 Live Production Links
 
 * **Live Web Application:** [autonomous-sales-assistant-1k5k.vercel.app](https://autonomous-sales-assistant-1k5k.vercel.app)
