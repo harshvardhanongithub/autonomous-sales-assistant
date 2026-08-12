@@ -5,13 +5,14 @@ const userSchema = new mongoose.Schema(
     name: {
       type: String,
       required: [true, 'Please add a name'],
+      trim: true,
     },
     email: {
       type: String,
       required: [true, 'Please add an email'],
       unique: true,
-      trim: true,
       lowercase: true,
+      trim: true,
     },
     password: {
       type: String,
@@ -19,6 +20,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
+      enum: ['rep', 'manager', 'admin'],
       default: 'rep',
     },
   },
@@ -27,5 +29,6 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-const User = mongoose.models.User || mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema);
+
 export default User;
