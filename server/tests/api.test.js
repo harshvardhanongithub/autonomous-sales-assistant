@@ -1,3 +1,10 @@
+import crypto from 'crypto';
+
+// Polyfill global crypto for Node/Jest VM module runner
+if (!globalThis.crypto) {
+  globalThis.crypto = crypto;
+}
+
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
@@ -19,7 +26,6 @@ describe('Sales Intelligence API Test Suite (Hermetic In-Memory)', () => {
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test_hermetic_jwt_secret_key_12345';
 
-    // Pin binary version for fast, deterministic execution across all environments & CI
     mongoServer = await MongoMemoryServer.create({
       binary: {
         version: '6.0.14',
@@ -75,11 +81,11 @@ describe('Sales Intelligence API Test Suite (Hermetic In-Memory)', () => {
     it('POST /api/auth/register should create user and strictly force rep role against escalation (201)', async () => {
       const res = await request(app)
         .post('/api/auth/register')
-        .send({ ...testUser, role: 'admin' }); // Attempt privilege escalation
+        .send({ ...testUser, role: 'admin' });
 
       expect(res.statusCode).toBe(201);
       expect(res.body).toHaveProperty('token');
-      expect(res.body.user).toHaveProperty('role', 'rep'); // Enforces default lowest privilege
+      expect(res.body.user).toHaveProperty('role', 'rep');
       testUserId = res.body.user._id;
     });
 
