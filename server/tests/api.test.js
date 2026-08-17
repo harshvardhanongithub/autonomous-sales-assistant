@@ -1,57 +1,143 @@
 import request from 'supertest';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import app from '../app.js';
+import User from '../models/User.js';
+import Lead from '../models/Lead.js';
 
-dotenv.config();
+describe('Sales Intelligence API Test Suite', () => {
+  let authToken;
+  let testUserId;
+  const uniqueSuffix = Date.now();
+  const testUser = {
+    name: 'Test Engineer',
+    email: `test_${uniqueSuffix}@example.com`,
+    password: 'Password123!',
+  };
 
-// Connect to Database before running tests
-beforeAll(async () => {
-  const mongoUri = process.env.MONGO_URI;
-  if (mongoUri && mongoose.connection.readyState === 0) {
-    await mongoose.connect(mongoUri);
-  }
-}, 15000);
+  beforeAll(async () => {
+    // Set fallback test secret if not set
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret_key_12345';
 
-// Close Database Connection after tests complete
-afterAll(async () => {
-  if (mongoose.connection.readyState !== 0) {
-    await mongoose.connection.close();
-  }
-});
-
-describe('1. Health Check Endpoint', () => {
-  it('GET / should return 200 OK and health status message', async () => {
-    const res = await request(app).get('/');
-    expect(res.statusCode).toEqual(200);
-    expect(res.text).toContain('AI Sales Assistant API is running');
+    if (process.env.MONGO_URI && mongoose.connection.readyState === 0) {
+      await mongoose.connect(process.env.MONGO_URI);
+    }
   });
-});
 
-describe('2. Authentication Routes Security & Validation', () => {
-  it('POST /api/auth/login should reject invalid payloads with 400, 401, or 500', async () => {
-    const res = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: 'nonexistent-user-test@domain.com',
-        password: 'wrongpassword123'
-      });
+  afterAll(async () => {
+    // Cleanup created test records
+    if (mongoose.connection.readyState !== 0) {
+      if (testUserId) {
+        await User.findByIdAndDelete(testUserId);
+        await Lead.deleteMany({ user: testUserId });
+      }
+      await mongoose.connection.close();
+    }
+  });
 
-    expect([400, 401, 404, 500]).toContain(res.statusCode);
-  }, 10000);
+  describe('Health & Security Baseline', () => {
+    it('GET / should return healthy server status', async () => {
+      const res = await request(app).get('/');
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveProperty('message');
+    });
 
-  it('POST /api/auth/register should fail when required fields are missing', async () => {
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({});
+    it('GET /api/leads without token should return 401 Unauthorized', async () => {
+      const res = await request(app).get('/api/leads');
+      expect(res.statusCode).toBe(401);
+      expect(res.body).toHaveProperty('message');
+    });
+  });
 
-    expect([400, 422, 500]).toContain(res.statusCode);
-  }, 10000);
-});
+  describe('Authentication Pipeline (Strict Assertions)', () => {
+    it('POST /api/auth/register should fail on missing fields with 400', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ email: 'incomplete@example.com' });
 
-describe('3. Protected Lead Routes Security', () => {
-  it('GET /api/leads should block unauthenticated access without JWT token', async () => {
-    const res = await request(app).get('/api/leads');
-    expect([401, 403]).toContain(res.statusCode);
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toMatch(/required fields/i);
+    });
+
+    it('POST /api/auth/login should reject invalid credentials with 400', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'nonexistent_user@example.com', password: 'wrongpassword' });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toMatch(/invalid credentials/i);
+    });
+
+    it('POST /api/auth/register should successfully create user with role rep (201)', async () => {
+      if (mongoose.connection.readyState === 0) return; // Skip if offline
+
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ ...testUser, role: 'admin' }); // Attempt privilege escalation
+
+      expect(res.statusCode).toBe(201);
+      expect(res.body).toHaveProperty('token');
+      expect(res.body.user).toHaveProperty('role', 'rep'); // Role must remain 'rep'
+      testUserId = res.body.user._id;
+    });
+
+    it('POST /api/auth/login should authenticate valid user (200)', async () => {
+      if (mongoose.connection.readyState === 0) return;
+
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: testUser.email, password: testUser.password });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveProperty('token');
+      authToken = res.body.token;
+    });
+  });
+
+  describe('End-to-End Lead Intelligence Lifecycle', () => {
+    let createdLeadId;
+
+    it('POST /api/leads should create lead with AI/heuristic score (201)', async () => {
+      if (!authToken) return;
+
+      const res = await request(app)
+        .post('/api/leads')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          name: 'Enterprise Prospect',
+          email: 'prospect@acmecorp.com',
+          company: 'Acme Corp',
+          notes: 'Urgent enterprise demo requested. Budget approved.',
+        });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.body).toHaveProperty('_id');
+      expect(res.body).toHaveProperty('score');
+      expect(typeof res.body.score).toBe('number');
+      expect(res.body.score).toBeGreaterThanOrEqual(50);
+      createdLeadId = res.body._id;
+    });
+
+    it('GET /api/leads should retrieve leads belonging to authenticated user (200)', async () => {
+      if (!authToken) return;
+
+      const res = await request(app)
+        .get('/api/leads')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBeGreaterThan(0);
+    });
+
+    it('DELETE /api/leads/:id should delete lead (200)', async () => {
+      if (!authToken || !createdLeadId) return;
+
+      const res = await request(app)
+        .delete(`/api/leads/${createdLeadId}`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.message).toMatch(/deleted/i);
+    });
   });
 });
