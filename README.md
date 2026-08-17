@@ -11,7 +11,7 @@ An end-to-end, AI-native B2B lead management and sales orchestration platform bu
 
 ## 📌 Executive Summary
 
-The Autonomous Sales Assistant bridges modern LLM reasoning with automated enterprise workflows. Instead of relying on manual CRM data entry, the system ingests raw lead inputs, runs multi-pass qualification models via an automated orchestration engine, persists verified data across a modern full-stack web application, and surfaces real-time sales intelligence through an intuitive dashboard.
+The Autonomous Sales Assistant bridges LLM-based reasoning with automated enterprise workflows to replace manual, rules-based CRM entry. Leads submitted through the web dashboard are scored and qualified in real time by a resilient, tiered AI pipeline with schema-validated outputs; leads submitted through the standalone n8n automation hub are processed and logged independently across Google Sheets, Discord, and MongoDB. Both paths persist to the same MongoDB Atlas cluster, giving the team a single source of truth regardless of how a lead enters the system.
 
 ---
 
@@ -42,7 +42,7 @@ The Autonomous Sales Assistant bridges modern LLM reasoning with automated enter
 
 ## 🏗️ Technical Architecture & Stack
 
-The platform is engineered using a decoupled, multi-tier architecture to ensure operational reliability, minimal latency, and strict schema validation across all stages.
+The platform is engineered using a decoupled architecture to ensure operational reliability, minimal latency, and strict schema validation across all stages.
 
 * **Automation & AI Orchestration:** n8n Workflow Automation, Custom Webhook Listeners, LLM API Interfaces
 * **Backend REST API:** Node.js, Express.js (ES Modules), JWT Authentication, Helmet HTTP Security, Rate Limiting Middleware
@@ -53,48 +53,61 @@ The platform is engineered using a decoupled, multi-tier architecture to ensure 
 
 ---
 
-## 🔄 End-to-End System Journey
+## 🔄 System Architecture
+
+> **Architecture note:** The n8n automation hub and the Express API are two **independent entry points** into the same MongoDB Atlas cluster — not a single chained pipeline. A lead can enter the system through the React dashboard (scored by the Express API's tiered AI service) or through an external webhook into n8n (scored and logged by the n8n workflow). This was a deliberate decoupling decision, not a request/response relay between the two.
 
 ```
-[ Unstructured Inbound Lead ]
-             │
-             ▼
- ┌──────────────────────┐
- │  n8n Automation Hub  │ ──► Multi-pass LLM Reasoning & Schema Validation
- └──────────────────────┘
-             │
-             ▼
- ┌──────────────────────┐
- │   Express REST API   │ ──► JWT Auth Middleware & Route Protection
- └──────────────────────┘
-             │
-             ├────────────────────────┐
-             ▼                        ▼
- ┌──────────────────────┐  ┌──────────────────────┐
- │   MongoDB Atlas DB   │  │   React / Vite UI    │
- └──────────────────────┘  └──────────────────────┘
+      [ Lead via Dashboard ]                    [ Lead via External Webhook ]
+              │                                            │
+              ▼                                            ▼
+ ┌──────────────────────────┐                 ┌──────────────────────────┐
+ │      Express REST API     │                 │      n8n Automation Hub  │
+ │  JWT Auth · Tiered AI     │                 │  Webhook → Gemini →      │
+ │  Scoring (see below)      │                 │  Sheets / Discord Log    │
+ └──────────────────────────┘                 └──────────────────────────┘
+              │                                            │
+              └─────────────────┬──────────────────────────┘
+                                 ▼
+                    ┌──────────────────────┐
+                    │   MongoDB Atlas DB   │
+                    └──────────────────────┘
+                                 │
+                                 ▼
+                    ┌──────────────────────┐
+                    │   React / Vite UI    │
+                    └──────────────────────┘
 ```
 
-### 1. AI Orchestration & Workflow Engine (n8n)
-* **Asynchronous Webhook Ingestion:** Captures inbound lead payloads from external webhooks and CRM integrations without blocking user-facing services.
-* **Deterministic LLM Reasoning:** Deconstructs complex sales logic into multi-node workflows:
-  * **Lead Fit & ICP Scoring:** Assesses budget, company size, and domain parameters against target Ideal Customer Profile (ICP) criteria.
-  * **Strategic Action Plans:** Automatically drafts personalized outreach templates, objection-handling strategies, and key value propositions.
-* **Schema Drift Protection:** Enforces strict JSON schema validation and multi-pass prompt verification to prevent hallucinations before state persistence.
+### 1. Express API: Tiered, Schema-Validated AI Scoring
+Every lead created through the dashboard is scored by a resilient three-tier fallback chain, each output validated against a strict Zod schema (`{ score, summary }`) before it's trusted or persisted:
 
-### 2. Full-Stack Application & Data Layer
+1. **n8n webhook** (if configured) — attempts to delegate scoring to the automation hub.
+2. **Direct Gemini call** — the primary scoring path, evaluating lead fit against ICP criteria and generating a plain-language rationale.
+3. **Deterministic keyword heuristic** — a rules-based fallback if no AI response is available, so lead creation never fails outright.
+
+The tier that actually produced a given score is persisted (`aiSource`) and shown next to the AI's reasoning (`aiSummary`) directly in the dashboard, so every score is auditable back to its source.
+
+### 2. n8n Automation Hub: Independent Webhook Ingestion
+A separate n8n workflow (`workflow.json`) provides a no-code entry point for leads arriving from external sources (webhooks, CRM integrations) outside the dashboard:
+* **Asynchronous webhook ingestion** — captures inbound payloads without touching the Express API.
+* **LLM-based scoring** — runs its own Gemini call via the LangChain node to extract a lead score.
+* **Multi-destination logging** — appends results to Google Sheets and posts notifications to Discord, then writes the record to MongoDB.
+
+### 3. Full-Stack Application & Data Layer
 * **Express.js API Engine:** Implements modular routes (`/api/auth`, `/api/leads`) secured by `JSON Web Tokens (JWT)`.
 * **Reliable Data Persistence:** Uses MongoDB Atlas document modeling to maintain historical lead interaction logs, score breakdown records, and account credentials.
 * **Responsive Client Dashboard:** Built with React 19 and Tailwind CSS to provide sales representatives with real-time analytics, filtering, and execution interfaces.
 
-### 3. Production Engineering & Deployment
-* **Client (Vercel):** Deployed with Vite root-directory isolation (`/client`) and automated CI/CD builds triggered on main branch updates. Configured with custom POSIX execution hooks (`chmod +x`) to ensure clean cross-platform Linux compilation.
-* **Server (Render):** Hosted as an active Express web service listening on dynamic environment ports (`process.env.PORT`) with encrypted environment variables (`MONGO_URI`, `JWT_SECRET`).
+### 4. Production Engineering & Deployment
+* **Client (Vercel):** Deployed with Vite root-directory isolation (`/client`) and automated CI/CD builds triggered on main branch updates.
+* **Server (Render):** Hosted as an active Express web service listening on dynamic environment ports (`process.env.PORT`) with encrypted environment variables (`MONGO_URI`, `JWT_SECRET`), and fail-loud startup checks that halt the process if required secrets are missing.
 
 ---
+
 ## 🧪 Testing & CI/CD Pipeline
 
-The backend API includes integration test coverage using Jest and Supertest to validate health checks, authentication boundaries, input validation, and route security.
+The backend API includes a hermetic Jest + Supertest integration suite that runs against an in-memory MongoDB instance (`mongodb-memory-server`) — no external database dependency, no skipped assertions. Coverage includes the full auth lifecycle, a privilege-escalation regression test, and an end-to-end lead scoring flow (create → fetch → delete).
 
 To run the test suite locally:
 
@@ -103,14 +116,14 @@ cd server
 npm test
 ```
 
-Continuous Integration is enforced via GitHub Actions (.github/workflows/ci.yml) on every push and pull request to main.
+Continuous Integration is enforced via GitHub Actions (`.github/workflows/ci.yml`) on every push and pull request to `main`.
 
 ---
 
 ## ⚡ Local Development & Setup
 
 ### Prerequisites
-* Node.js (v18+ recommended)
+* Node.js (v20+ recommended)
 * MongoDB Atlas Cluster or Local MongoDB Instance
 * Git
 
@@ -119,32 +132,40 @@ Continuous Integration is enforced via GitHub Actions (.github/workflows/ci.yml)
 1. **Clone the Repository:**
    ```bash
    git clone https://github.com/harshvardhanongithub/autonomous-sales-assistant.git
-   https://github.com/harshvardhanongithub/autonomous-sales-assistant.git
    cd autonomous-sales-assistant
-   
+   ```
 
 2. **Configure Environment Variables:**
-   Create a `.env` file in the root folder:
+   Copy the example env files and fill in your own values — never commit real credentials:
+   ```bash
+   cp server/.env.example server/.env
+   cp client/.env.example client/.env
+   ```
+   `server/.env` requires:
    ```env
    PORT=5001
    MONGO_URI=your_mongodb_connection_string
    JWT_SECRET=your_jwt_secret_key
+   GEMINI_API_KEY=your_gemini_api_key
+   N8N_WEBHOOK_URL=your_n8n_webhook_url   # optional — omit to skip tier 1
+   ```
+   `client/.env` requires:
+   ```env
+   VITE_API_BASE_URL=http://localhost:5001
    ```
 
 3. **Install Dependencies:**
    ```bash
    # Install backend dependencies
-   npm install
+   cd server && npm install && cd ..
 
    # Install client dependencies
-   cd client
-   npm install
-   cd ..
+   cd client && npm install && cd ..
    ```
 
 4. **Launch Local Servers:**
-   * **Backend:** Run `npm run dev` in the root folder (Serves on `http://localhost:5001`)
-   * **Frontend:** Run `cd client && npm run dev` (Serves on `http://localhost:5173`)
+   * **Backend:** `cd server && npm run dev` (serves on `http://localhost:5001`)
+   * **Frontend:** `cd client && npm run dev` (serves on `http://localhost:5173`)
 
 ---
 
@@ -153,7 +174,7 @@ Continuous Integration is enforced via GitHub Actions (.github/workflows/ci.yml)
 * **Live Web Application:** [https://autonomous-sales-assistant-1k5k.vercel.app](https://autonomous-sales-assistant-1k5k.vercel.app)
 * **Backend API Gateway:** [https://autonomous-sales-assistant.onrender.com](https://autonomous-sales-assistant.onrender.com)
 
-* ---
+---
 
- ## 📄 **License**
+## 📄 License
 This project is licensed under the [MIT License](LICENSE).
