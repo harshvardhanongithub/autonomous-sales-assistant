@@ -1,49 +1,22 @@
-import express from 'express';
 import dotenv from 'dotenv';
-import cors from 'cors';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
-import connectDB from './config/db.js';
-
-import authRoutes from './routes/authRoutes.js';
-import leadRoutes from './routes/leadRoutes.js';
-
 dotenv.config();
 
-connectDB();
+// Fail loud immediately at boot time if critical secrets are missing
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is missing. Halting startup.');
+  process.exit(1);
+}
 
-const app = express();
+import app from './app.js';
+import connectDB from './config/db.js';
 
-// 1. Security Headers Middleware
-app.use(helmet());
-
-// 2. Rate Limiting Middleware (100 requests per 15 mins per IP)
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many requests from this IP, please try again after 15 minutes.' }
-});
-
-// Enable CORS and JSON parsing
-app.use(cors());
-app.use(express.json());
-
-// Apply rate limiting to API routes
-app.use('/api', limiter);
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/leads', leadRoutes);
-
-app.get('/', (req, res) => {
-  res.send('AI Sales Assistant API is running...');
-});
-
-// Bind to Render's environment PORT variable, fallback to 5001 for local dev
 const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  });
+}).catch((err) => {
+  console.error('Database connection failed:', err.message);
+  process.exit(1);
 });

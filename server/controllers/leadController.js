@@ -12,7 +12,6 @@ export const createLead = async (req, res) => {
       return res.status(400).json({ message: 'Name and email are required' });
     }
 
-    // Pass lead context through the unified AI / n8n pipeline
     const analysis = await analyzeLead({ name, email, company, notes });
 
     const lead = await Lead.create({
@@ -22,6 +21,7 @@ export const createLead = async (req, res) => {
       notes,
       score: analysis.score,
       aiSummary: analysis.summary,
+      aiSource: analysis.source,
       user: req.user._id,
     });
 
