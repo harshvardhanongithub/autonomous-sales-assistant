@@ -21,16 +21,12 @@ jobs:
         cache: 'npm'
         cache-dependency-path: 'server/package-lock.json'
 
-    - name: Cache MongoDB Binary for In-Memory Testing
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/mongodb-binaries
-        key: ${{ runner.os }}-mongodb-binaries-6.0.14
-
     - name: Install server dependencies
       working-directory: ./server
-      run: npm ci
+      run: npm install
 
     - name: Run Hermetic Integration Tests
       working-directory: ./server
+      env:
+        CI: true
       run: npm test
