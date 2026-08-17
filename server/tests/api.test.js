@@ -18,7 +18,14 @@ describe('Sales Intelligence API Test Suite (Hermetic In-Memory)', () => {
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test_hermetic_jwt_secret_key_12345';
-    mongoServer = await MongoMemoryServer.create();
+
+    // Pin binary version for fast, deterministic execution across all environments & CI
+    mongoServer = await MongoMemoryServer.create({
+      binary: {
+        version: '6.0.14',
+      },
+    });
+
     const uri = mongoServer.getUri();
     await mongoose.connect(uri);
   }, 30000);
@@ -33,7 +40,7 @@ describe('Sales Intelligence API Test Suite (Hermetic In-Memory)', () => {
   }, 30000);
 
   describe('Health & Security Baseline', () => {
-    it('GET / should return healthy server status', async () => {
+    it('GET / should return healthy server status (200)', async () => {
       const res = await request(app).get('/');
       expect(res.statusCode).toBe(200);
       expect(res.text || res.body).toBeTruthy();
@@ -46,7 +53,7 @@ describe('Sales Intelligence API Test Suite (Hermetic In-Memory)', () => {
     });
   });
 
-  describe('Authentication Pipeline (Strict Assertions & Privilege Escalation Check)', () => {
+  describe('Authentication Pipeline (Strict Assertions & Privilege Escalation Guard)', () => {
     it('POST /api/auth/register should fail on missing fields with 400', async () => {
       const res = await request(app)
         .post('/api/auth/register')
@@ -68,11 +75,11 @@ describe('Sales Intelligence API Test Suite (Hermetic In-Memory)', () => {
     it('POST /api/auth/register should create user and strictly force rep role against escalation (201)', async () => {
       const res = await request(app)
         .post('/api/auth/register')
-        .send({ ...testUser, role: 'admin' });
+        .send({ ...testUser, role: 'admin' }); // Attempt privilege escalation
 
       expect(res.statusCode).toBe(201);
       expect(res.body).toHaveProperty('token');
-      expect(res.body.user).toHaveProperty('role', 'rep');
+      expect(res.body.user).toHaveProperty('role', 'rep'); // Enforces default lowest privilege
       testUserId = res.body.user._id;
     });
 
